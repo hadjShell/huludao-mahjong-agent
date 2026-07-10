@@ -108,6 +108,11 @@ Define settlement as two separate calculations:
 
 `finalDelta[player] = (winDelta[player] + kongDelta[player]) * base`
 
+### Settlement Input Validity
+
+- If a player declares a direct exposed kong or upgraded kong, that player must be treated as having an open hand. In settlement input, any such player represented in loser visibility must be marked `open`; a Seven Pairs winner cannot declare a direct exposed kong or upgraded kong because Seven Pairs is a closed hand.
+- If a player wins by kong replacement, that winner must have an upgraded kong event in the same settlement input.
+
 ### `winDelta`
 
 For each non-winner A, B, C, calculate that player’s `lostFan`
@@ -143,7 +148,7 @@ Applicable doubles include:
 - dealer double, if the winner is dealer or this loser is dealer
 - closed-hand double, if this loser has not opened
 - three-closed-losers double, if all three losers are still closed
-- kong-replacement-win double, if winner declares kong, draws replacement tile, and wins immediately
+- kong-replacement-win double, if winner upgrades a kong, draws replacement tile, and wins immediately
 
 #### Seven Pairs
 
@@ -173,7 +178,7 @@ Kong reward is calculated per kong event, per player, independently from who win
 
 Each kong event produces its own payer/payee deltas:
 
-- Direct exposed kong: discarder pays kong declarer.
+- Direct exposed kong: discarder pays the kong declarer on behalf of all three other players.
 - Concealed kong: all three other players pay kong declarer.
 - Upgraded kong: all three other players pay kong declarer.
 
@@ -181,6 +186,7 @@ Then all kong event deltas are summed into `kongDelta[player]`.
 
 - Direct exposed kong is 2 fan.
 - Direct exposed kong of dragon tiles is 4 fan.
+- For direct exposed kong, the discarder pays three shares. Therefore, non-dragon direct exposed kong is `2 * 3 = 6` fan paid by the discarder, and dragon direct exposed kong is `4 * 3 = 12` fan paid by the discarder.
 - Upgraded kong is 2 fan.
 - Upgraded kong of dragon tiles is 4 fan.
 - Concealed kong is 4 fan.
@@ -381,18 +387,18 @@ Calculation:
   - `winDelta[S] = -1`
   - `winDelta[W] = -1`
   - `winDelta[N] = -1`
-- Direct exposed kong is `2` fan: `W` pays `S`
+- Direct exposed kong is `2` fan per share, paid by the discarder on behalf of all three other players: `W` pays `S` `2 * 3 = 6`
 - Concealed kong of dragon tiles is `8` fan: `E`, `S`, and `W` each pay `N`
-- `kongDelta[S] = +2 - 8 = -6`
-- `kongDelta[W] = -2 - 8 = -10`
+- `kongDelta[S] = +6 - 8 = -2`
+- `kongDelta[W] = -6 - 8 = -14`
 - `kongDelta[E] = -8`
 - `kongDelta[N] = +8 + 8 + 8 = +24`
 
 Expected final delta:
 
 - `E`: `+3 - 8 = -5`
-- `S`: `-1 - 6 = -7`
-- `W`: `-1 - 10 = -11`
+- `S`: `-1 - 2 = -3`
+- `W`: `-1 - 14 = -15`
 - `N`: `-1 + 24 = +23`
 
 ### Example 7: Basic win plus kong rewards

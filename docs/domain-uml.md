@@ -1,0 +1,207 @@
+# Domain UML
+
+This diagram describes the current framework-free domain model under `com.hadjshell.mahjong.domain`.
+
+```mermaid
+classDiagram
+    direction LR
+
+    namespace config {
+        class GameConfig {
+            <<record>>
+            +BigDecimal base
+            +int initialPoints
+            +int roundCount
+            +List~Seat~ seatOrder
+            +defaultConfig() GameConfig
+        }
+    }
+
+    namespace model {
+        class Seat {
+            <<enumeration>>
+            EAST
+            NORTH
+            WEST
+            SOUTH
+            +defaultOrder() List~Seat~
+        }
+
+        class HandVisibility {
+            <<enumeration>>
+            OPEN
+            CLOSED
+        }
+
+        class KongTileType {
+            <<enumeration>>
+            NON_DRAGON
+            DRAGON
+        }
+
+        class SettlementReason {
+            <<enumeration>>
+            SELF_DRAW_DOUBLE
+            DISCARDER_DOUBLE
+            DEALER_DOUBLE
+            CLOSED_HAND_DOUBLE
+            THREE_CLOSED_LOSERS_DOUBLE
+            KONG_REPLACEMENT_WIN_DOUBLE
+            SEVEN_PAIRS_FIXED
+            ALL_TRIPLETS_FIXED
+            EXHAUSTIVE_DRAW
+            DIRECT_EXPOSED_KONG
+            UPGRADED_KONG
+            CONCEALED_KONG
+            DRAGON_KONG
+        }
+
+        class WinningCategory {
+            <<enumeration>>
+            BASIC
+            SINGLE
+            SEVEN_PAIRS
+            ALL_TRIPLETS
+        }
+    }
+
+    namespace settlement {
+        class SettlementInput {
+            <<record>>
+            +GameConfig config
+            +Seat dealer
+            +WinOutcome winOutcome
+            +List~KongEvent~ kongEvents
+        }
+
+        class SettlementResult {
+            <<record>>
+            +Map~Seat, Integer~ winDelta
+            +Map~Seat, Integer~ kongDelta
+            +Map~Seat, Integer~ totalDelta
+            +Map~Seat, BigDecimal~ moneyDelta
+            +List~LostBreakdown~ lostBreakdowns
+            +List~KongBreakdown~ kongBreakdowns
+        }
+
+        class SettlementCalculator {
+            +calculate(SettlementInput input) SettlementResult
+        }
+
+        class WinOutcome {
+            <<sealed interface>>
+        }
+
+        class DiscardWin {
+            <<record>>
+            +Seat winner
+            +Seat discarder
+            +WinningCategory category
+            +Map~Seat, HandVisibility~ loserVisibility
+        }
+
+        class SelfDrawWin {
+            <<record>>
+            +Seat winner
+            +WinningCategory category
+            +Map~Seat, HandVisibility~ loserVisibility
+            +boolean kongReplacementWin
+        }
+
+        class ExhaustiveDraw {
+            <<record>>
+        }
+
+        class KongEvent {
+            <<sealed interface>>
+            +fan() int
+        }
+
+        class DirectExposedKong {
+            <<record>>
+            +Seat declarer
+            +Seat discarder
+            +KongTileType tileType
+            +fan() int
+        }
+
+        class UpgradedKong {
+            <<record>>
+            +Seat declarer
+            +KongTileType tileType
+            +fan() int
+        }
+
+        class ConcealedKong {
+            <<record>>
+            +Seat declarer
+            +KongTileType tileType
+            +fan() int
+        }
+    }
+
+    namespace report {
+        class LostBreakdown {
+            <<record>>
+            +Seat loser
+            +int lostFan
+            +List~SettlementReason~ lostReasons
+        }
+
+        class KongBreakdown {
+            <<record>>
+            +KongEvent event
+            +Map~Seat, Integer~ kongDelta
+            +List~SettlementReason~ reasons
+        }
+    }
+
+    namespace exception {
+        class InvalidSettlementInputException {
+            +InvalidSettlementInputException(String message)
+        }
+    }
+
+    WinOutcome <|.. DiscardWin
+    WinOutcome <|.. SelfDrawWin
+    WinOutcome <|.. ExhaustiveDraw
+
+    KongEvent <|.. DirectExposedKong
+    KongEvent <|.. UpgradedKong
+    KongEvent <|.. ConcealedKong
+
+    SettlementCalculator ..> SettlementInput : consumes
+    SettlementCalculator ..> SettlementResult : produces
+
+    SettlementInput --> GameConfig
+    SettlementInput --> Seat : dealer
+    SettlementInput --> WinOutcome
+    SettlementInput --> KongEvent
+
+    SettlementResult --> Seat
+    SettlementResult --> LostBreakdown
+    SettlementResult --> KongBreakdown
+
+    GameConfig --> Seat
+
+    DiscardWin --> Seat
+    DiscardWin --> WinningCategory
+    DiscardWin --> HandVisibility
+
+    SelfDrawWin --> Seat
+    SelfDrawWin --> WinningCategory
+    SelfDrawWin --> HandVisibility
+
+    DirectExposedKong --> Seat
+    DirectExposedKong --> KongTileType
+    UpgradedKong --> Seat
+    UpgradedKong --> KongTileType
+    ConcealedKong --> Seat
+    ConcealedKong --> KongTileType
+
+    LostBreakdown --> Seat
+    LostBreakdown --> SettlementReason
+    KongBreakdown --> KongEvent
+    KongBreakdown --> Seat
+    KongBreakdown --> SettlementReason
+```
