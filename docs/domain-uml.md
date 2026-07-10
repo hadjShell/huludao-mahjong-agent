@@ -1,6 +1,7 @@
 # Domain UML
 
-This diagram describes the current framework-free domain model under `com.hadjshell.mahjong.domain`.
+This diagram describes the current framework-free settlement domain under
+`com.hadjshell.mahjong.domain`.
 
 ```mermaid
 classDiagram
@@ -27,18 +28,6 @@ classDiagram
             +defaultOrder() List~Seat~
         }
 
-        class HandVisibility {
-            <<enumeration>>
-            OPEN
-            CLOSED
-        }
-
-        class KongTileType {
-            <<enumeration>>
-            NON_DRAGON
-            DRAGON
-        }
-
         class SettlementReason {
             <<enumeration>>
             SELF_DRAW_DOUBLE
@@ -55,6 +44,38 @@ classDiagram
             CONCEALED_KONG
             DRAGON_KONG
         }
+    }
+
+    namespace model_win {
+        class WinOutcome {
+            <<sealed interface>>
+        }
+
+        class DiscardWin {
+            <<record>>
+            +Seat winner
+            +Seat discarder
+            +WinningCategory category
+            +Map~Seat, HandVisibility~ loserVisibility
+        }
+
+        class SelfDrawWin {
+            <<record>>
+            +Seat winner
+            +WinningCategory category
+            +Map~Seat, HandVisibility~ loserVisibility
+            +boolean isKongReplacementWin
+        }
+
+        class ExhaustiveDraw {
+            <<record>>
+        }
+
+        class HandVisibility {
+            <<enumeration>>
+            OPEN
+            CLOSED
+        }
 
         class WinningCategory {
             <<enumeration>>
@@ -62,6 +83,56 @@ classDiagram
             SINGLE
             SEVEN_PAIRS
             ALL_TRIPLETS
+        }
+    }
+
+    namespace model_kong {
+        class KongEvent {
+            <<sealed interface>>
+        }
+
+        class DirectExposedKong {
+            <<record>>
+            +Seat declarer
+            +Seat discarder
+            +KongTileType tileType
+            +fan() int
+        }
+
+        class UpgradedKong {
+            <<record>>
+            +Seat declarer
+            +KongTileType tileType
+            +fan() int
+        }
+
+        class ConcealedKong {
+            <<record>>
+            +Seat declarer
+            +KongTileType tileType
+            +fan() int
+        }
+
+        class KongTileType {
+            <<enumeration>>
+            NON_DRAGON
+            DRAGON
+        }
+    }
+
+    namespace model_report {
+        class LostBreakdown {
+            <<record>>
+            +Seat loser
+            +int lostFan
+            +List~SettlementReason~ lostReasons
+        }
+
+        class KongBreakdown {
+            <<record>>
+            +KongEvent event
+            +Map~Seat, Integer~ kongDelta
+            +List~SettlementReason~ reasons
         }
     }
 
@@ -87,72 +158,17 @@ classDiagram
         class SettlementCalculator {
             +calculate(SettlementInput input) SettlementResult
         }
-
-        class WinOutcome {
-            <<sealed interface>>
-        }
-
-        class DiscardWin {
-            <<record>>
-            +Seat winner
-            +Seat discarder
-            +WinningCategory category
-            +Map~Seat, HandVisibility~ loserVisibility
-        }
-
-        class SelfDrawWin {
-            <<record>>
-            +Seat winner
-            +WinningCategory category
-            +Map~Seat, HandVisibility~ loserVisibility
-            +boolean kongReplacementWin
-        }
-
-        class ExhaustiveDraw {
-            <<record>>
-        }
-
-        class KongEvent {
-            <<sealed interface>>
-            +fan() int
-        }
-
-        class DirectExposedKong {
-            <<record>>
-            +Seat declarer
-            +Seat discarder
-            +KongTileType tileType
-            +fan() int
-        }
-
-        class UpgradedKong {
-            <<record>>
-            +Seat declarer
-            +KongTileType tileType
-            +fan() int
-        }
-
-        class ConcealedKong {
-            <<record>>
-            +Seat declarer
-            +KongTileType tileType
-            +fan() int
-        }
     }
 
-    namespace report {
-        class LostBreakdown {
-            <<record>>
-            +Seat loser
-            +int lostFan
-            +List~SettlementReason~ lostReasons
+    namespace settlement_calculation {
+        class WinSettlementCalculator {
+            +buildLostBreakdowns(Seat dealer, WinOutcome outcome) List~LostBreakdown~
+            +calculateWinDelta(Seat dealer, WinOutcome outcome, List~LostBreakdown~ lostBreakdowns) Map~Seat, Integer~
         }
 
-        class KongBreakdown {
-            <<record>>
-            +KongEvent event
-            +Map~Seat, Integer~ kongDelta
-            +List~SettlementReason~ reasons
+        class KongSettlementCalculator {
+            +buildKongBreakdowns(List~KongEvent~ events) List~KongBreakdown~
+            +calculateKongDelta(List~KongBreakdown~ kongBreakdowns) Map~Seat, Integer~
         }
     }
 
@@ -170,8 +186,13 @@ classDiagram
     KongEvent <|.. UpgradedKong
     KongEvent <|.. ConcealedKong
 
-    SettlementCalculator ..> SettlementInput : consumes
+    SettlementCalculator *-- WinSettlementCalculator
+    SettlementCalculator *-- KongSettlementCalculator
+    SettlementCalculator ..> SettlementInput : validates and consumes
     SettlementCalculator ..> SettlementResult : produces
+    SettlementCalculator ..> InvalidSettlementInputException : throws
+    SettlementCalculator ..> DirectExposedKong : validates open hand
+    SettlementCalculator ..> UpgradedKong : validates open hand and replacement win
 
     SettlementInput --> GameConfig
     SettlementInput --> Seat : dealer
@@ -181,6 +202,14 @@ classDiagram
     SettlementResult --> Seat
     SettlementResult --> LostBreakdown
     SettlementResult --> KongBreakdown
+
+    WinSettlementCalculator ..> WinOutcome
+    WinSettlementCalculator ..> LostBreakdown
+    WinSettlementCalculator ..> SettlementReason
+
+    KongSettlementCalculator ..> KongEvent
+    KongSettlementCalculator ..> KongBreakdown
+    KongSettlementCalculator ..> SettlementReason
 
     GameConfig --> Seat
 
