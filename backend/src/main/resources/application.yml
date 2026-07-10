@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: huludao-mahjong
+  profiles:
+    default: dev
+
+server:
+  port: ${SERVER_PORT:6060}
