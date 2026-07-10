@@ -2,6 +2,7 @@
 .codex/
 .agents/
 AGENTS.md
+decisions.md
 tasks/
 skills-lock.json
 .DS_Store
